@@ -79,10 +79,45 @@ const countryCoordinates: { [key: string]: LatLngExpression } = {
 };
 
 const mockRegions: CombinedRegion[] = [
-    { landDegradation: 0.7, wealth: 0.3, populationTrend: 0.5, luminosity: 0.2, ndvi: 0.6, nightLights: 0.4 },
-    { landDegradation: 0.6, wealth: 0.4, populationTrend: 0.4, luminosity: 0.3, ndvi: 0.7, nightLights: 0.5 },
-    { landDegradation: 0.8, wealth: 0.2, populationTrend: 0.6, luminosity: 0.5, ndvi: 0.5, nightLights: 0.6 }
+    {
+        id: 1,
+        name: "Algiers",
+        coordinates: [36.7538, 3.0588],
+        landDegradation: 0.7,
+        wealth: 0.3,
+        populationTrend: 0.5,
+        luminosity: 0.2,
+        ndvi: 0.6,
+        nightLights: 0.4
+    },
+    {
+        id: 2,
+        name: "Oran",
+        coordinates: [35.6969, -0.6331],
+        landDegradation: 0.6,
+        wealth: 0.4,
+        populationTrend: 0.4,
+        luminosity: 0.3,
+        ndvi: 0.7,
+        nightLights: 0.5
+    },
+    {
+        id: 3,
+        name: "Constantine",
+        coordinates: [36.3650, 6.6147],
+        landDegradation: 0.8,
+        wealth: 0.2,
+        populationTrend: 0.6,
+        luminosity: 0.5,
+        ndvi: 0.5,
+        nightLights: 0.6
+    }
 ];
+
+const getRegionColor = (index: number) => {
+    const colors = ['#ff0000', '#ffa500', '#00ff00']; // red, orange, green
+    return colors[index];
+};
 
 const MapUpdater = ({ center }: { center: LatLngExpression }) => {
     const map = useMap();
@@ -140,13 +175,61 @@ const PriorityFundingMap = () => {
         setMapCenter(countryCoordinates[selectedCountry]);
     }, [selectedCountry]);
 
-    const getRegionColor = (score: number, isTopThree: boolean) => {
-        if (isTopThree) return '#ff4500';
-        if (score > 0.7) return '#ff0000';
-        if (score > 0.5) return '#ff6b6b';
-        if (score > 0.3) return '#ffd93d';
-        return '#6bcb77';
+    type CityData = {
+        [key: string]: CombinedRegion[];
     };
+    
+    // Add after countryCoordinates definition
+    const algeriaCities: CityData = {
+        "Algeria": [
+            {
+                id: 1,
+                name: "Algiers",
+                coordinates: [36.7538, 3.0588],
+                landDegradation: 0.7,
+                wealth: 0.3,
+                populationTrend: 0.5,
+                luminosity: 0.2,
+                ndvi: 0.6,
+                nightLights: 0.4
+            },
+            {
+                id: 2,
+                name: "Oran",
+                coordinates: [35.6969, -0.6331],
+                landDegradation: 0.6,
+                wealth: 0.4,
+                populationTrend: 0.4,
+                luminosity: 0.3,
+                ndvi: 0.7,
+                nightLights: 0.5
+            },
+            {
+                id: 3,
+                name: "Constantine",
+                coordinates: [36.3650, 6.6147],
+                landDegradation: 0.8,
+                wealth: 0.2,
+                populationTrend: 0.6,
+                luminosity: 0.5,
+                ndvi: 0.5,
+                nightLights: 0.6
+            }
+        ]
+    };
+
+    // Add this function to sort cities based on priority scores
+const getSortedCities = () => {
+    if (!algeriaCities["Algeria"]) return [];
+    
+    return [...algeriaCities["Algeria"]]
+        .map(city => ({
+            ...city,
+            priorityScore: calculatePriorityScore(city, weights)
+        }))
+        .sort((a, b) => (b.priorityScore || 0) - (a.priorityScore || 0));
+};
+
 
     return (
         <div className="max-w-6xl mx-auto p-4 space-y-4">
@@ -179,32 +262,30 @@ const PriorityFundingMap = () => {
                                         url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
                                         attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
                                     />
-                                    {priorityRegions.map((region, index) => (
-                                region.coordinates && region.coordinates.length === 2 ? (
-                                    <Circle
-                                        key={region.id}
-                                        center={region.coordinates as LatLngExpression}
-                                        radius={5000}
-                                        pathOptions={{
-                                            fillColor: getRegionColor(region.priorityScore, index < 3),
-                                            fillOpacity: 0.7,
-                                            color: selectedRegion?.id === region.id ? '#000' : getRegionColor(region.priorityScore, index < 3),
-                                            weight: selectedRegion?.id === region.id ? 2 : 1
-                                        }}
-                                        eventHandlers={{
-                                            click: () => setSelectedRegion(region)
-                                        }}
-                                    >
-                                        <MapTooltip>
-                                            <div>
-                                                <strong>{region.name}</strong><br />
-                                                Priority Score: {region.priorityScore.toFixed(2)}<br />
-                                                Suggested Funding: ${calculateFunding(region.priorityScore)}
-                                            </div>
-                                        </MapTooltip>
-                                    </Circle>
-                                ) : null
-                            ))}
+                                    {selectedCountry === "Algeria" && getSortedCities().map((region, index) => (
+                                        <Circle
+                                            key={region.id}
+                                            center={region.coordinates as LatLngExpression}
+                                            radius={75000}
+                                            pathOptions={{
+                                                fillColor: getRegionColor(index),
+                                                fillOpacity: 0.7,
+                                                color: selectedRegion?.id === region.id ? '#000' : getRegionColor(index),
+                                                weight: selectedRegion?.id === region.id ? 2 : 1
+                                            }}
+                                            eventHandlers={{
+                                                click: () => setSelectedRegion(region)
+                                            }}
+                                        >
+                                            <MapTooltip>
+                                                <div>
+                                                    <strong>{region.name}</strong><br />
+                                                    Priority Score: {calculatePriorityScore(region, weights).toFixed(2)}<br />
+                                                    Suggested Funding: ${calculateFunding(calculatePriorityScore(region, weights))}
+                                                </div>
+                                            </MapTooltip>
+                                        </Circle>
+                                    ))}
 
                                 </MapContainer>
                             </div>
